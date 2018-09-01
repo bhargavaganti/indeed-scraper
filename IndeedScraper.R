@@ -1,9 +1,10 @@
 library(rvest)
 library(stringr)
+library(r)
 
 URL = "https://www.indeed.co.uk/jobs?q=data+scientist&l=london&start="
 
-######### get total positions ######### 
+######### get total number of positions ######### 
 
 maxJobs <- joblist %>%
   html_nodes("#searchCount") %>%
@@ -17,14 +18,17 @@ maxJobs <- joblist %>%
 
 jobs = data.frame()
 
-for (n in seq(0, 500, by=10)) {
-  URL = paste(URL, n, sep="")
-  scrapeJobsFromPage(URL)
+for (n in seq(0, 1000, by=10)) {
+  URL_new = paste(URL, n, sep="")
+  print(paste("scraping jobs from",URL_new))
+  scrapeJobsFromPage(URL_new)
 }
 
-scrapeJobsFromPage <- function(url){
+######### scrape page ######### 
 
-  joblist <- read_html(url)
+scrapeJobsFromPage <- function(url_p){
+
+  joblist <<- read_html(url_p)
   
   # get list of jobtitles 
   jobtitles <- joblist %>%
@@ -37,13 +41,58 @@ scrapeJobsFromPage <- function(url){
     html_text()
   
   # get list of companies 
-  company <- joblist %>%
+  company <<- joblist %>%
     html_nodes(".company") %>%
     html_text()
   
-  jobs_temp <<- cbind.data.frame(jobtitles, location , company)
+  # get list of hrefs 
+  hrefs <<- joblist %>%
+    html_nodes("#resultsCol .jobtitle") %>%
+    str_extract('href=".+" (title|target=)') %>% str_extract("^\\S*") %>%
+    str_replace('href=\"',"") %>% 
+    str_replace_all("amp;","") %>%
+    str_replace('\"',"") 
+  
+  descriptions = vector()
+  
+  for (href in hrefs) {
+    
+    if (is.na(href)) {
+      descriptions <- c(descriptions, "NA")
+    } else {
+
+      description <<- read_html(paste("https://www.indeed.co.uk", href, sep = "")) %>%
+        html_nodes(".icl-u-xs-mt--md") %>%
+        html_text()
+      
+      if (length(description) == 0) {
+
+        shouldMoveOn = TRUE
+        
+        while ((shouldMoveOn)) {
+          
+          description_attempt <<- read_html(paste("https://www.indeed.co.uk", href, sep = "")) %>%
+            html_nodes(".icl-u-xs-mt--md") %>%
+            html_text()
+        
+          if (!is.na(nchar(description_attempt[1]))) {
+            shouldMoveOn = FALSE
+            descriptions <- c(descriptions, description_attempt[1])
+          }
+        }
+      } else {
+        descriptions <- c(descriptions, description[1])
+      }
+    }
+  }
+  
+  jobs_temp <<- cbind.data.frame(jobtitles, location , company,des)
   
   jobs <<- rbind.data.frame(jobs,jobs_temp)
+
 }
 
+############# write dataframe to csv ############# 
+
+write.csv(jobs,"data/jobs.csv")
 
