@@ -2,7 +2,7 @@
 
 ### Description
 
-R script that job descriptions from Indeed.co.uk for a given location and position. Saves the result to csv.
+R script that scrapes job descriptions from Indeed.co.uk for a given location and position, and saves the result to csv.
 
 ---
 
@@ -29,9 +29,9 @@ URL <- str_c("https://www.indeed.co.uk/jobs?q=",search_term,"&l=",location,"&sta
 
 #### Get total number of listings
 
+```r
 joblist <- read_html(URL) 
 
-```r
 maxJobs <- joblist %>%
   html_nodes("#searchCount") %>%
   html_text() %>%
