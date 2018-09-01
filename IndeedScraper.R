@@ -2,7 +2,9 @@ library(rvest)
 library(stringr)
 library(r)
 
-URL = "https://www.indeed.co.uk/jobs?q=data+scientist&l=london&start="
+URL = "https://www.indeed.co.uk/jobs?q=data+scientist&l=&start="
+
+joblist <<- read_html(URL)
 
 ######### get total number of positions ######### 
 
@@ -18,7 +20,8 @@ maxJobs <- joblist %>%
 
 jobs = data.frame()
 
-for (n in seq(0, 1000, by=10)) {
+
+for (n in seq(0, 2000, by=10)) {
   URL_new = paste(URL, n, sep="")
   print(paste("scraping jobs from",URL_new))
   scrapeJobsFromPage(URL_new)
@@ -86,7 +89,7 @@ scrapeJobsFromPage <- function(url_p){
     }
   }
   
-  jobs_temp <<- cbind.data.frame(jobtitles, location , company,des)
+  jobs_temp <<- cbind.data.frame(jobtitles, location , company,descriptions)
   
   jobs <<- rbind.data.frame(jobs,jobs_temp)
 
@@ -94,5 +97,9 @@ scrapeJobsFromPage <- function(url_p){
 
 ############# write dataframe to csv ############# 
 
-write.csv(jobs,"data/jobs.csv")
+######## remove whitespace
+jobs[] <- lapply(jobs, gsub, pattern='\n', replacement='')
+jobs$company = str_trim(jobs$company)
+jobs$jobtitles = str_trim(jobs$jobtitles)
 
+write.csv(jobs, "data/listings.csv", row.names = FALSE)
